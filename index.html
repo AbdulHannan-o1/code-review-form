@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub AI Code Review</title>
+</head>
+<body>
+  <h2>GitHub AI Code Review</h2>
+  <form action="https://your-n8n-domain.com/webhook/start-review" method="post">
+    <label for="repo">GitHub Repo URL:</label>
+    <input type="text" id="repo" name="repo_url" placeholder="Paste repo link here" required><br><br>
+
+    <label for="prompt">AI Review Prompt (optional):</label>
+    <input type="text" id="prompt" name="ai_prompt" placeholder="Enter a custom prompt or leave blank"><br><br>
+
+    <button type="submit">Start AI Review</button>
+  </form>
+</body>
+</html>
