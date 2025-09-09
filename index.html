@@ -4,17 +4,151 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GitHub AI Code Review</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+   /* Base body and container styles */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Light theme */
+body.light-mode {
+  background-color: #f8f9fa;
+  color: #343a40;
+}
+
+.review-container.light-mode {
+  background-color: #fff;
+  color: #343a40;
+}
+
+/* Dark theme */
+body.dark-mode {
+  background-color: #121212;
+  color: #f1f1f1;
+}
+
+.review-container.dark-mode {
+  background-color: #1e1e1e;
+  color: #f1f1f1;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  user-select: none;
+  transition: color 0.3s;
+}
+
+/* Form text (email hint) */
+.form-text {
+  font-size: 0.85rem;
+  margin-top: 4px;
+  transition: color 0.3s;
+}
+
+/* Adapt form-text color to theme */
+body.light-mode .form-text {
+  color: #6c757d; /* Bootstrap secondary text */
+}
+
+body.dark-mode .form-text {
+  color: #d1d1d1;
+}
+
+/* Button */
+.btn-submit {
+  width: 100%;
+  padding: 10px;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+body.light-mode .btn-submit {
+  background-color: #0d6efd;
+  color: #fff;
+  border: none;
+}
+
+body.dark-mode .btn-submit {
+  background-color: #375a7f;
+  color: #fff;
+  border: none;
+}
+
+/* Responsive container */
+.review-container {
+  max-width: 600px;
+  margin: 80px auto;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+@media (max-width: 576px) {
+  .review-container {
+    margin: 20px auto;
+    padding: 20px;
+  }
+}
+
+  </style>
 </head>
-<body>
-  <h2>GitHub AI Code Review</h2>
-  <form action="https://saaso1.app.n8n.cloud/webhook-test/5a24e585-3c40-4047-8877-b56da689fd37" method="post">
-    <label for="repo">GitHub Repo URL:</label>
-    <input type="text" id="repo" name="repo_url" placeholder="Paste repo link here" required><br><br>
+<body class="dark-mode">
+  <div class="review-container dark-mode">
+    <div class="theme-toggle" id="themeToggle">
+      ☀️ Light Mode
+    </div>
+    <h2 class="text-center mb-4">GitHub AI Code Review</h2>
+    <form action="https://saaso1.app.n8n.cloud/webhook-test/5a24e585-3c40-4047-8877-b56da689fd37" method="post">
+      <div class="mb-3">
+        <label for="repo" class="form-label">GitHub Repo URL</label>
+        <input type="text" class="form-control" id="repo" name="repo_url" placeholder="Paste repo link here" required>
+      </div>
 
-    <label for="prompt">AI Review Prompt (optional):</label>
-    <input type="text" id="prompt" name="ai_prompt" placeholder="Enter a custom prompt or leave blank"><br><br>
+      <div class="mb-3">
+        <label for="email" class="form-label">Your Email</label>
+        <input type="email" class="form-control" id="email" name="user_email" placeholder="Enter your email" required>
+        <div class="form-text">
+    You will receive the AI review results at this email in a few minutes.
+  </div>
+      </div>
 
-    <button type="submit">Start AI Review</button>
-  </form>
+      <div class="mb-3">
+        <label for="prompt" class="form-label">AI Review Prompt (optional)</label>
+        <input type="text" class="form-control" id="prompt" name="ai_prompt" placeholder="Enter a custom prompt or leave blank">
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-submit">Start AI Review</button>
+    </form>
+  </div>
+
+  <!-- Bootstrap JS Bundle -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Dark/Light Mode Toggle Script -->
+  <script>
+    const body = document.body;
+    const container = document.querySelector('.review-container');
+    const toggle = document.getElementById('themeToggle');
+
+    toggle.addEventListener('click', () => {
+      if (body.classList.contains('dark-mode')) {
+        body.classList.replace('dark-mode', 'light-mode');
+        container.classList.replace('dark-mode', 'light-mode');
+        toggle.textContent = '🌙 Dark Mode';
+      } else {
+        body.classList.replace('light-mode', 'dark-mode');
+        container.classList.replace('light-mode', 'dark-mode');
+        toggle.textContent = '☀️ Light Mode';
+      }
+    });
+  </script>
 </body>
 </html>
