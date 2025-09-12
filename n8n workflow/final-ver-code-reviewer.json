@@ -1,0 +1,432 @@
+{
+  "name": "code-reviewer",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=System/Intro:\nRole: Expert Software Engineer and Code Reviewer\nTask: Review the following code files from a repository, identify issues, suggest improvements, and provide best-practice recommendations.\nAudience: Developers maintaining or improving this codebase\nLanguage: English\nOutput: JSON with the following structure:\n\n{\n  \"file\": \"<file path>\",\n  \"issues\": [\"list of key issues with line numbers if possible\"],\n  \"suggestions\": [\"concise, actionable suggestions (1-2 sentences each)\"],\n  \"summary\": \"brief overall assessment\"\n}\n\n\nInstructions:\n\nRead each file carefully and identify only the most important issues, bugs, anti-patterns, security risks, or performance concerns.\n\nSuggestions should be concise, actionable, and limited to 1–2 sentences each. Include code snippets only if essential.\n\nHighlight code areas that are likely to cause problems or need refactoring, but avoid overly verbose explanations.\n\nEach file's analysis should remain separate and clearly marked.\n\nStep-by-step reasoning should be brief. Focus on actionable feedback.\n\nEnsure the JSON format is strictly followed.\n\nExample:\nFile: utils.js\nContent: function add(a, b){return a+b}\n\nJSON Output:\n\n{\n  \"file\": \"utils.js\",\n  \"issues\": [\"No input validation for parameters\", \"Missing JSDoc comments\"],\n  \"suggestions\": [\"Add parameter type checking\", \"Include JSDoc comments for maintainability\"],\n  \"summary\": \"Simple utility file, minor improvements recommended\"\n}\n\n\nContext:\nThe following files are provided for review:\n{{ $json.data }}\n\nNow solve the task.",
+        "options": {
+          "batching": {}
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1600,
+        -192
+      ],
+      "id": "31f4d341-e7e8-4afd-86ae-b935a1bab034",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1608,
+        32
+      ],
+      "id": "5a018f0e-abc2-454a-ab52-99c57ea61234",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "L1VigiDCPSgDotfM",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.data }}",
+        "collectionName": "code",
+        "databaseName": "AI-code-reviewer",
+        "contextWindowLength": "={{ 5 }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryMongoDbChat",
+      "typeVersion": 1,
+      "position": [
+        1736,
+        32
+      ],
+      "id": "8d43a715-3109-4652-912c-27c2ae356ae9",
+      "name": "MongoDB Chat Memory",
+      "credentials": {
+        "mongoDb": {
+          "id": "TfeY1oqe3tFjHFMa",
+          "name": "MongoDB account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "repository",
+        "operation": "get",
+        "owner": {
+          "__rl": true,
+          "value": "={{ $json.owner }}",
+          "mode": "name"
+        },
+        "repository": {
+          "__rl": true,
+          "value": "={{ $json.repo }}",
+          "mode": "name"
+        }
+      },
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        -192
+      ],
+      "id": "6723e6c5-7946-49be-b8ce-c507eeee844a",
+      "name": "Get a repository",
+      "webhookId": "d62e3b3d-6496-4c15-b398-37c296b88b6e",
+      "credentials": {
+        "githubApi": {
+          "id": "v5Gw9d69TT77oXK0",
+          "name": "GitHub account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "let rawOutputs = [];\n\n// Case 1: $json.output is an array of objects\nif (Array.isArray($json.output)) {\n    rawOutputs = $json.output.map(item => item.output || \"\");\n} else if (typeof $json.output === \"string\") {\n    // Case 2: $json.output is just a string\n    rawOutputs = [$json.output];\n} else {\n    rawOutputs = [\"\"]; // fallback\n}\n\nlet results = [];\n\nfor (let raw of rawOutputs) {\n    raw = raw.replace(/```json\\n?/g, \"\").replace(/```/g, \"\").trim();\n\n    let parsed;\n    try {\n        parsed = JSON.parse(raw);\n    } catch (e) {\n        parsed = [{\n            file: \"unknown\",\n            issues: [\"Parsing error\"],\n            suggestions: [],\n            summary: raw.slice(0, 100)\n        }];\n    }\n\n    if (!Array.isArray(parsed)) parsed = [parsed];\n\n    for (let p of parsed) {\n        results.push({\n            json: {\n                repo: $('repo branch').item.json.repo || \"unknown-repo\",\n                branch: $json.branch || \"main\",\n                reviewed_at: new Date().toISOString(),\n                file: p.file || \"unknown\",\n                issues: p.issues || [],\n                suggestions: p.suggestions || [],\n                summary: p.summary || \"\"\n            }\n        });\n    }\n}\n\nreturn{ results};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1952,
+        -192
+      ],
+      "id": "477c3a9b-21a3-497b-b5eb-954b51a19291",
+      "name": "structuring the output"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "5a24e585-3c40-4047-8877-b56da689fd37",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        32,
+        -192
+      ],
+      "id": "d39747fe-1bff-4531-b697-38ecc546d398",
+      "name": "extracting repo url",
+      "webhookId": "5a24e585-3c40-4047-8877-b56da689fd37"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const repoUrl = $json.body.repo_url.trim();\nconst aiPrompt = $json.body.ai_prompt || \"Default AI review prompt\";\n\n// Clean repo URL\nconst cleanUrl = repoUrl.replace(/\\.git$/, \"\");\nconst match = cleanUrl.match(/github\\.com\\/([^/]+)\\/([^/]+)/);\n\nif (!match) {\n  throw new Error(\"Invalid GitHub repo URL\");\n}\n\nconst owner = match[1];\nconst repo = match[2];\n\nreturn {\n  json: {\n    repo_url: cleanUrl,\n    ai_prompt: aiPrompt,\n    owner,\n    repo,\n    // build repo details API endpoint for next node\n    repoApiUrl: `https://api.github.com/repos/${owner}/${repo}`\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        -192
+      ],
+      "id": "30f827ea-4c15-40c2-8e87-a26d24ea63bf",
+      "name": "meta data "
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Grab repo details from Get a repository node output\nconst { html_url: repo_url, default_branch, owner, name: repo } = $json;\n\n// Extract owner login\nconst ownerLogin = owner?.login || \"unknown\";\n\n// Detect default branch (fallback to main if missing)\nconst branch = default_branch || \"main\";\n\n// Build tree API URL (lists all files in repo)\nreturn {\n  json: {\n    repo_url,\n    owner: ownerLogin,\n    repo,\n    branch,\n    apiUrl: `https://api.github.com/repos/${ownerLogin}/${repo}/git/trees/${branch}?recursive=1`\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        -192
+      ],
+      "id": "6d89148b-515b-4ce0-969f-50cf554da31d",
+      "name": "repo branch"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiUrl }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        928,
+        -192
+      ],
+      "id": "bdfbaf76-634d-43f7-9442-d621649f8a6a",
+      "name": "fetching all files "
+    },
+    {
+      "parameters": {
+        "jsCode": "// All extensions considered \"code\" for logic review\nconst codeExtensions = [\n  '.js', '.ts', '.jsx', '.tsx', '.py', '.java', '.c', '.cpp', '.h',\n  '.cs', '.go', '.rb', '.php', '.swift', '.kt', '.html', '.htm', '.css',\n  '.scss', '.sass', '.less', '.vue', '.svelte', '.dart', '.m', '.scala', '.jl'\n];\n\n// Optional: extensions for config files (we may skip large ones)\nconst configExtensions = ['.json', '.yaml', '.yml', '.xml', '.toml', '.ini'];\n\n// Maximum size for config files to include (1 MB = 1048576 bytes)\nconst maxConfigSize = 1048576;\n\nconst filteredFiles = $json.tree\n  .filter(item => {\n    if (item.type !== 'blob') return false; // Only files\n\n    // Include code files regardless of size\n    if (codeExtensions.some(ext => item.path.endsWith(ext))) return true;\n\n    // Include config files only if smaller than maxConfigSize\n    if (configExtensions.some(ext => item.path.endsWith(ext)) && item.size <= maxConfigSize) return true;\n\n    // Skip everything else (datasets, huge config, media, binaries)\n    return false;\n  })\n  .map(item => ({\n    json: {\n      path: item.path,\n      url: item.url,\n      size: item.size\n    }\n  }));\n\nreturn filteredFiles;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        -192
+      ],
+      "id": "db9b55c0-3697-4004-9731-642b7c95fc36",
+      "name": "filtering the required "
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": " application/vnd.github.v3.raw"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1376,
+        -192
+      ],
+      "id": "688abe40-fb71-4de6-aaee-904d75249be8",
+      "name": "fetching the main code base "
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2176,
+        -192
+      ],
+      "id": "0cb5e918-868f-4e44-bce5-a6ba28ab8822",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('extracting repo url').item.json.body.user_email }}",
+        "subject": "=AI_code-reviewer-result ",
+        "emailType": "text",
+        "message": "=Owner of Repositories:  {{ $('Get a repository').item.json.owner.login }} \nRepositories:  {{ $('Get a repository').item.json.name }}\nBranch:  {{ $('Get a repository').item.json.default_branch }}\nreviewed at:  {{ $('Aggregate').item.json.data[0].results[0].json.reviewed_at }}\n",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2624,
+        -192
+      ],
+      "id": "82df07c0-ffbc-46c7-808d-ec2720fce2a3",
+      "name": "Send a message",
+      "webhookId": "c1301242-bb77-4945-980c-a6d0a71459c6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "rW8AUZ5uxgQQOvVQ",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "binaryPropertyName": "=data",
+        "options": {
+          "fileName": "ai-code-review-results"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2400,
+        -192
+      ],
+      "id": "7aa99b08-aa4b-4d5f-ae53-0383930f12f6",
+      "name": "Convert to File"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MongoDB Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a repository": {
+      "main": [
+        [
+          {
+            "node": "repo branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "structuring the output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "structuring the output": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extracting repo url": {
+      "main": [
+        [
+          {
+            "node": "meta data ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "meta data ": {
+      "main": [
+        [
+          {
+            "node": "Get a repository",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "repo branch": {
+      "main": [
+        [
+          {
+            "node": "fetching all files ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetching all files ": {
+      "main": [
+        [
+          {
+            "node": "filtering the required ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filtering the required ": {
+      "main": [
+        [
+          {
+            "node": "fetching the main code base ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetching the main code base ": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "534e55b9-d08e-4035-80f4-a8bf18d3d3ba",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e065f94529140dda1ab264f52fd112b92ad970c73047a79b597076330b773d99"
+  },
+  "id": "1dob1nEIH3R9aRou",
+  "tags": []
+}
